@@ -6,6 +6,7 @@ I use it to publish short, practical write-ups on things I learn every day while
 
 ## Posts
 
+- [2026-05-12 - Kotlin Concepts: Extension Properties, Sealed Interfaces, Function Composition, and More](posts/2026-05-12-kotlin-extension-properties-sealed-interfaces-and-more.md)
 - [2026-05-06 - Kotlin Concepts: Generics Variance, Value Classes, Delegation, Ranges, and More](posts/2026-05-06-kotlin-generics-value-classes-delegation-ranges.md)
 - [2026-05-05 - Kotlin Concepts: Functional Programming, Delegates, Sealed Classes, Constructors, and Generics](posts/2026-05-05-kotlin-fp-delegates-sealed-generics.md)
 - [2026-04-24 - Kotlin Coroutines in Android: Dispatchers, Builders, Jobs, and Flow](posts/2026-04-24-kotlin-coroutines-dispatchers-builders-flow.md)
