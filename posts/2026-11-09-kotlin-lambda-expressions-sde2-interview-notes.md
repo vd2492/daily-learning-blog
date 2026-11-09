@@ -4,7 +4,6 @@ Today I revised Kotlin lambda expressions end to end: fundamentals, function typ
 
 ## 1. Fundamentals
 
-Simple meaning:
 A lambda is an anonymous function literal: a function with no name that you can store, pass, and return like any other value.
 
 One-line interview definition:
@@ -15,6 +14,9 @@ Why it exists:
 - Less boilerplate than anonymous classes.
 - Enables functional style (`map`, `filter`).
 - Makes callbacks and DSLs possible.
+
+Analogy:
+A lambda is a sticky note with instructions. It has no title, but you can hand it to someone and they can follow it later.
 
 ```kotlin
 val name: (ParamTypes) -> ReturnType = { params -> body }
@@ -118,27 +120,28 @@ Gotchas:
 
 ## 4. Where Lambdas Are Used
 
-Because functions are values, a lambda can go anywhere a value can.
+Simple meaning:
+Because functions are values, a lambda can go anywhere a value can: a variable, an argument, a return value, a collection, a property, or a default parameter.
 
-| # | Situation | Example |
-| --- | --- | --- |
-| 1 | Stored in a variable | `val sq: (Int) -> Int = { it * it }` |
-| 2 | Passed as an argument | `list.map { it * 2 }` |
-| 3 | Returned from a function | `fun mul(f: Int): (Int) -> Int = { it * f }` |
-| 4 | Stored in a collection | `mapOf<String, (Int, Int) -> Int>("add" to { a, b -> a + b })` |
-| 5 | Class property / callback | `class Button(val onClick: () -> Unit)` |
-| 6 | Default parameter value | `fun greet(fmt: (String) -> String = { "Hi $it" })` |
-| 7 | Nullable (optional callback) | `onDone: (() -> Unit)? = null` then `onDone?.invoke()` |
-| 8 | Invoked immediately | `{ a: Int, b: Int -> a + b }(3, 4)` or `run { ... }` |
-| 9 | With a receiver (DSL) | `buildString { append("hi") }` |
-| 10 | In place of a SAM interface | `Runnable { println("run") }` |
+Analogy:
+A recipe card is just a piece of paper. You can keep it in a drawer, hand it to a friend, or let the friend choose which card to use.
 
-Variable vs parameter, same syntax split in two:
+```kotlin
+val sq: (Int) -> Int = { it * it }                              // variable
+list.map { it * 2 }                                             // argument
+fun mul(f: Int): (Int) -> Int = { it * f }                      // return value
+class Button(val onClick: () -> Unit)                           // property / callback
+fun greet(fmt: (String) -> String = { "Hi $it" })               // default parameter
+fun load(onDone: (() -> Unit)? = null) { onDone?.invoke() }     // optional callback
+```
+
+How to read the code:
 
 - Variable: name, type, and value together: `val op: (Int, Int) -> Int = { x, y -> x + y }`.
-- Parameter: only name and type in the declaration (`op: (Int, Int) -> Int`); the lambda value arrives at the call site.
+- Parameter: only name and type in the declaration (`op: (Int, Int) -> Int`); the lambda arrives at the call site.
 
-Operation fixed vs operation chosen by the caller:
+Internal idea:
+There are two ways to decide the operation.
 
 ```kotlin
 val add = { x: Int, y: Int -> x + y }                          // operation decided now, values later
@@ -146,12 +149,28 @@ fun calculate(a: Int, b: Int, op: (Int, Int) -> Int) = op(a, b) // operation and
 calculate(10, 5, add)                                          // they combine
 ```
 
+Flow:
+
+```text
+lambda created -> stored / passed / returned -> invoked later
+```
+
+Android use:
+
+- Click listeners: `button.setOnClickListener { }`.
+- Callbacks: `onSuccess`, `onError`.
+- Compose: `onClick = { }` and content lambdas.
+
+Common mistake:
+Forgetting to call a stored lambda. `val greet = { println("Hi") }` does nothing until `greet()` runs.
+
 ## 5. Higher-Order Functions (HOF)
 
 Simple meaning:
 A higher-order function takes a function as a parameter, returns a function, or both.
 
-Takes a function:
+Analogy:
+A coffee machine with a swappable recipe. The machine (fixed algorithm) stays the same; you decide what drink to make by handing it a different recipe.
 
 ```kotlin
 fun calculate(a: Int, b: Int, op: (Int, Int) -> Int): Int = op(a, b)
@@ -160,33 +179,31 @@ calculate(10, 5) { x, y -> x + y }   // 15
 calculate(10, 5) { x, y -> x * y }   // 50
 ```
 
-How to read the header:
+How to read the code:
 "`calculate` takes `a` (Int), `b` (Int) and `op` (a function from two Ints to an Int), and returns an Int, which is `op(a, b)`."
 
 - Three inputs: two numbers and one function.
 - `-> Int` inside the parentheses is `op`'s return type; `): Int` after them is `calculate`'s return type.
 - `= op(a, b)` is an expression body, shorthand for `{ return op(a, b) }`.
 
+Internal idea:
+HOFs separate what varies (the lambda) from the fixed algorithm (looping, sorting, retrying, timing).
+
 Flow:
 
 ```text
 10 -> a -> x
 5  -> b -> y
-lambda -> op -> body calls op(10, 5)
+lambda -> op -> body calls op(10, 5) -> 15
 ```
 
-Returns a function:
+Returning a function:
 
 ```kotlin
 fun multiplier(factor: Int): (Int) -> Int = { it * factor }
 val triple = multiplier(3)
 triple(5)   // 15
 ```
-
-Why HOFs matter:
-They separate what varies (the lambda) from the fixed algorithm (looping, sorting, retrying, timing).
-
-Standard library HOFs to name in interviews: `map`, `filter`, `forEach`, `fold`, `reduce`, `flatMap`, `groupBy`, `sortedBy`, `any`, `all`, `first`, `associateBy`, `takeWhile`, `let`, `apply`, `repeat`, `use`, `synchronized`, `lazy`.
 
 Real-world example (common SDE 2 ask: "write a retry / timing utility"):
 
@@ -204,10 +221,24 @@ fun <T> retry(times: Int, block: () -> T): T {
 }
 ```
 
+Android use:
+
+- `map`, `filter`, `groupBy`, `sortedBy` on lists.
+- `lazy { }`, `synchronized(lock) { }`, `use { }` for resources.
+- Retry and timing wrappers around network calls.
+
+Common mistakes:
+
+- Confusing `-> Int` inside the parentheses (the lambda's result) with `: Int` after them (the function's result).
+- Writing a custom loop where `map`/`filter`/`fold` already express the intent.
+
 ## 6. Closures (Capturing Variables)
 
 Simple meaning:
 A closure is a lambda that captures variables from the scope where it was created and keeps access to them after that scope ends.
+
+Analogy:
+A backpack. When the lambda leaves its home function, it carries the variables it needs inside the backpack.
 
 ```kotlin
 fun counter(): () -> Int {
@@ -220,21 +251,32 @@ c(); c()
 println(c())   // 3, count lives on inside the lambda
 ```
 
+How to read the code:
+`counter()` creates `count`, returns a lambda that increments it, and then finishes. The lambda still remembers `count`.
+
+Internal idea:
+A captured `var` is wrapped in a `Ref` object (`Ref.IntRef`, `Ref.ObjectRef`) so the lambda and the outer scope share one mutable box. Captured `val`s are copied into fields of the lambda object.
+
+Flow:
+
+```text
+counter() -> count lives in a Ref box -> lambda holds the box -> each call updates the same box
+```
+
 Kotlin vs Java (frequent question):
 
 - Java lambdas can capture only effectively final variables.
 - Kotlin lambdas can capture and modify `var`s.
 
-Internal idea:
-A captured `var` is wrapped in a `Ref` object (`Ref.IntRef`, `Ref.ObjectRef`) so the lambda and the outer scope share one mutable box. Captured `val`s are copied into fields of the lambda object.
+Android use:
 
-Cost:
-A capturing lambda allocates a new object on every evaluation; a non-capturing lambda is reused as a singleton instance.
+- Click listeners capturing a counter or state.
+- Callbacks capturing a ViewModel, Context, or a View.
 
-Pitfalls to mention:
+Common mistakes:
 
 - Memory leaks: a lambda that captures an Activity, View, or `this` and is stored in a long-lived object (singleton, static listener) keeps that object alive.
-- Thread safety: a captured `var` modified from several threads or coroutines is a shared mutable state race; use `AtomicInteger` or a `Mutex`.
+- Thread safety: a captured `var` modified from several threads or coroutines is shared mutable state; use `AtomicInteger` or a `Mutex`.
 - Stale capture: a lambda captures the variable, not a snapshot, so it sees later changes.
 
 ```kotlin
@@ -249,6 +291,9 @@ show()   // prints 2, not 1
 Simple meaning:
 A lambda with receiver has type `T.() -> R`. Inside it, `this` is a `T`, so you call `T`'s members directly. This is the foundation of Kotlin DSLs.
 
+Analogy:
+Handing a chef a ready-made workstation. Inside the station you just say "chop" and "boil" without naming the kitchen each time.
+
 ```kotlin
 val shout: String.() -> String = { uppercase() + "!" }   // this = the String
 "hi".shout()   // "HI!"
@@ -258,7 +303,7 @@ shout("hi")    // also valid: receiver passed as first argument
 How to read the code:
 `String.() -> String` is "a function called on a String that returns a String."
 
-Writing a builder (classic interview task):
+Builder example (classic interview task):
 
 ```kotlin
 class Html {
@@ -275,28 +320,59 @@ val page = html {
 }
 ```
 
-Where you see it:
-`apply`, `run`, `with`, `buildString`, `buildList`, Gradle Kotlin DSL, Ktor routing, Jetpack Compose (`Column { }` content uses `ColumnScope.() -> Unit`), and coroutine builders (`CoroutineScope.() -> Unit` in `launch`).
+Internal idea:
+The compiler passes the receiver as a hidden first argument, so `Html.() -> Unit` behaves like `(Html) -> Unit`, but the body sees `this`.
+
+Flow:
+
+```text
+html { } -> Html() created -> lambda runs with this = Html -> p("Hello"), p("World") -> Html returned
+```
+
+Android use:
+
+- `apply`, `run`, `with`, `buildString`, `buildList`.
+- Gradle Kotlin DSL, Ktor routing.
+- Jetpack Compose: `Column { }` content uses `ColumnScope.() -> Unit`.
+- Coroutine builders: `launch` takes `CoroutineScope.() -> Unit`.
 
 Notes:
 
-- `@DslMarker` stops nested DSL blocks from implicitly calling an outer receiver's methods, preventing confusing scope leaks.
+- `@DslMarker` stops nested DSL blocks from implicitly calling an outer receiver's methods.
 - Extension function vs lambda with receiver: same idea (`this` = receiver); an extension function is named and declared once, a lambda with receiver is a value passed at the call site.
+
+Common mistake:
+Nesting DSL blocks without `@DslMarker` and accidentally calling an outer builder's function from an inner block.
 
 ## 8. Scope Functions
 
 Simple meaning:
 Scope functions are five small inline higher-order functions that run a lambda in the context of an object. They differ on two axes only: how you refer to the object (`it` or `this`) and what they return (the lambda result or the object).
 
-| Function | Object as | Returns | Extension? | Typical use |
-| --- | --- | --- | --- | --- |
-| `let` | `it` | lambda result | yes | null checks `x?.let { }`, transform a value |
-| `run` | `this` | lambda result | yes (also a non-extension form) | configure and compute a result |
-| `with` | `this` | lambda result | no: `with(obj) { }` | group calls on an object |
-| `apply` | `this` | the object | yes | object initialisation / builder |
-| `also` | `it` | the object | yes | side effects: logging, validation |
+Analogy:
+Different ways to work on a parcel. Some let you talk about "this parcel" directly, some call it "it"; some hand back the parcel, some hand back a receipt.
 
-Signatures (worth memorising, they explain everything):
+| Function | Object as | Returns | Typical use |
+| --- | --- | --- | --- |
+| `let` | `it` | lambda result | null checks `x?.let { }`, transform a value |
+| `run` | `this` | lambda result | configure and compute a result |
+| `with` | `this` | lambda result | group calls on an object |
+| `apply` | `this` | the object | object initialisation / builder |
+| `also` | `it` | the object | side effects: logging, validation |
+
+```kotlin
+val len = name?.let { it.length } ?: 0
+val user = User().apply { name = "A"; age = 30 }
+val list = mutableListOf(1).also { println("created $it") }
+val area = rect.run { width * height }
+with(canvas) { drawLine(); drawCircle() }
+```
+
+How to read the code:
+Ask two questions: "does the block use `it` or `this`?" and "do I want the result or the object back?"
+
+Internal idea:
+The signatures explain everything (worth memorising):
 
 ```kotlin
 inline fun <T, R> T.let(block: (T) -> R): R
@@ -309,27 +385,35 @@ inline fun <T> T.also(block: (T) -> Unit): T
 Memory trick:
 `(T) ->` gives `it`, `T.() ->` gives `this`. Returns `R` = lambda result, returns `T` = the object.
 
-Examples:
+Flow:
 
-```kotlin
-val len = name?.let { it.length } ?: 0
-val user = User().apply { name = "A"; age = 30 }
-val list = mutableListOf(1).also { println("created $it") }
-val area = rect.run { width * height }
-with(canvas) { drawLine(); drawCircle() }
+```text
+object -> scope function -> lambda runs on object -> result or object returned
 ```
+
+Android use:
+
+- `intent.apply { putExtra(...) }`.
+- `savedState?.let { restore(it) }`.
+- `also { Log.d(...) }` inside a chain.
+- `with(binding) { title.text = ...; subtitle.text = ... }`.
 
 Common follow-ups:
 
 - `apply` vs `also`: both return the object; `apply` uses `this` (configure), `also` uses `it` (side effect).
 - `let` vs `run`: both return the result; `let` uses `it`, `run` uses `this`.
-- `run` vs `with`: same behaviour; `run` is an extension (`obj.run { }`, works with `?.`), `with` takes the object as an argument.
-- Avoid deep nesting: nested `it`/`this` gets ambiguous and hurts readability.
+- `run` vs `with`: same behaviour; `run` is an extension (works with `?.`), `with` takes the object as an argument.
+
+Common mistake:
+Deep nesting of scope functions, where `it` and `this` become ambiguous and the code gets hard to read.
 
 ## 9. Returns in Lambdas
 
 Simple meaning:
 A bare `return` inside a lambda returns from the enclosing function, not the lambda, and is only allowed when the lambda is passed to an inline function. This is called a non-local return.
+
+Analogy:
+A fire alarm inside a room. A bare `return` evacuates the whole building (enclosing function); `return@label` only leaves the room (the lambda).
 
 | Form | Exits | Allowed when |
 | --- | --- | --- |
@@ -359,12 +443,27 @@ list.forEach loop@{             // custom label
 }
 ```
 
-Why bare `return` needs `inline`:
+How to read the code:
+In `findFirstEven`, the first even number ends the whole function. In the `return@forEach` version, only the current item is skipped.
+
+Internal idea:
 After inlining, the lambda body sits inside the caller, so returning from the caller is real code. A non-inline lambda is a separate object that might run later or on another thread, so a return to a finished caller makes no sense.
 
-Notes:
+Flow:
 
-- `break` from `forEach` is not directly possible. Use a regular `for` loop, `run loop@{ list.forEach { if (...) return@loop } }`, or `firstOrNull` / `takeWhile`.
+```text
+inline forEach -> lambda body copied into caller -> bare return = return from caller
+```
+
+Android use:
+
+- Early exits from `list.forEach` inside a validation function.
+- `return@launch` inside coroutine builders.
+
+Common mistakes:
+
+- Expecting bare `return` in `forEach` to behave like `continue`.
+- `break` from `forEach` is not possible. Use a `for` loop, `run loop@{ list.forEach { if (...) return@loop } }`, or `firstOrNull` / `takeWhile`.
 - `val f = { return 5 }` does not compile; use `return@label` or an anonymous function `fun(): Int { return 5 }`.
 
 ## 10. `inline`, `noinline`, `crossinline`, `reified`
@@ -372,12 +471,15 @@ Notes:
 Simple meaning:
 `inline` copies a function's body and its lambda arguments into the call site, removing the lambda object allocation and the virtual `invoke` call. The other three keywords adjust that behaviour. This is the most-asked advanced lambda topic in senior Kotlin and Android rounds.
 
-| Keyword | Applies to | What it does | Use when |
-| --- | --- | --- | --- |
-| `inline` | function | inlines the body and all lambda params at the call site; enables non-local return | small HOFs called often with lambdas (`map`, `filter`, `let`) |
-| `noinline` | one lambda param of an inline fn | that lambda stays a real object; no non-local return | you need to store it, or pass it to a non-inline function |
-| `crossinline` | one lambda param of an inline fn | still inlined, but bare `return` is forbidden | the lambda runs in another context (a nested lambda, `Runnable`, another thread) |
-| `reified` | type param of an inline fn | keeps `T` available at runtime (`is T`, `T::class`) | generic helpers like `inline fun <reified T> Gson.fromJson(json: String)` |
+Analogy:
+Instead of calling a helper who brings a tool (object) every time, you photocopy the helper's instructions straight into your own notebook (call site).
+
+| Keyword | Applies to | What it does |
+| --- | --- | --- |
+| `inline` | function | inlines the body and all lambda params at the call site; enables non-local return |
+| `noinline` | one lambda param | that lambda stays a real object; no non-local return |
+| `crossinline` | one lambda param | still inlined, but bare `return` is forbidden |
+| `reified` | type param | keeps `T` available at runtime (`is T`, `T::class`) |
 
 ```kotlin
 inline fun runTasks(a: () -> Unit, noinline b: () -> Unit) {
@@ -393,35 +495,53 @@ inline fun <reified T> List<Any>.filterType(): List<T> = filter { it is T }.map 
 listOf(1, "a", 2).filterType<Int>()   // [1, 2]
 ```
 
-Why lambdas cost something without `inline`:
+How to read the code:
 
-- Each lambda compiles to a `FunctionN` object.
-- Capturing lambdas allocate on every call.
-- Calls go through `invoke` (virtual call, boxing of primitives for generic `FunctionN`).
+- `a` is inlined and can use non-local return; `b` stays an object so it can be stored or passed on.
+- `block` runs inside `handler.post { }`, a different context, so a bare `return` would be unsafe: `crossinline` bans it.
+- `reified T` lets `it is T` work even though generics are erased.
 
-Downsides of `inline`:
+Internal idea:
 
-- Larger bytecode (body copied at every call site).
-- Cannot inline recursive functions.
-- Public inline functions cannot use private/internal members (they would leak into callers).
-- No benefit without lambda params (the compiler warns).
+- Without `inline`: each lambda compiles to a `FunctionN` object, capturing lambdas allocate on every call, and calls go through `invoke` (virtual call, boxing of primitives).
+- With `inline`: the code is pasted at the call site, so none of that happens.
+- `reified` needs `inline` because JVM generics are erased at runtime; inlining substitutes the real type at each call site.
 
-Why `reified` needs `inline`:
-JVM generics are erased at runtime; inlining substitutes the real type at each call site, so `T` is known.
+Flow:
+
+```text
+call site -> inline function body + lambda body copied in -> no object, no invoke
+```
+
+Android use:
+
+- `Gson.fromJson<T>()` style helpers with `reified`.
+- `runOnUiThread`-style helpers that need `crossinline`.
+- `measure { }` and `let`/`map` style utilities.
+
+Common mistakes:
+
+- Inlining large bodies: bytecode grows at every call site.
+- Inlining recursive functions: not allowed.
+- Using private/internal members inside a public inline function: they would leak into callers.
+- Marking a function `inline` with no lambda params: no benefit, the compiler warns.
 
 `noinline` vs `crossinline` in one line:
 `noinline` = not inlined at all (becomes an object); `crossinline` = inlined, but no non-local return.
 
 ## 11. Lambda vs Anonymous Function vs Function Reference
 
-All three produce a value of a function type; they differ in syntax, return behaviour, and return-type declaration.
+Simple meaning:
+All three produce a value of a function type. They differ in syntax, return behaviour, and return-type declaration.
+
+Analogy:
+Three ways to give directions: shout a quick instruction (lambda), write a detailed letter with a stated destination (anonymous function), or point to an existing signpost (function reference).
 
 | | Lambda | Anonymous function | Function reference |
 | --- | --- | --- | --- |
 | Syntax | `{ x: Int -> x * 2 }` | `fun(x: Int): Int { return x * 2 }` | `::double` |
 | Bare `return` | exits the enclosing function (inline only) | exits the anonymous function itself | n/a |
-| Explicit return type | no, inferred from last expression | yes, can be declared | from the referenced function |
-| Best for | short inline logic | multiple exit points, explicit types | reusing an existing named function |
+| Explicit return type | no, inferred | yes, can be declared | from the referenced function |
 
 ```kotlin
 fun isEven(n: Int) = n % 2 == 0
@@ -437,28 +557,44 @@ val p = user::greet                       // bound reference to an instance
 val make = ::User                         // constructor reference
 ```
 
-Notes:
+How to read the code:
 
-- Lambda vs regular function: a `fun` is a named declaration; a lambda is an expression/value. A `fun` can be turned into a value with `::name`.
-- Lambda vs Java lambda: Kotlin has real function types (`(Int) -> Int`); Java lambdas only target functional interfaces. Kotlin lambdas can modify captured `var`s; Java's cannot.
+- The anonymous function has several exits, and `return` leaves only itself.
+- `String::length` turns a member into a function where the receiver becomes the parameter.
+- `user::greet` is bound to one instance; `::User` is the constructor as a function.
+
+Internal idea:
+A named `fun` is a declaration; a lambda is an expression. `::name` converts a declaration into a value.
+
+Flow:
+
+```text
+named fun -> ::name -> function value -> passed like a lambda
+```
+
+Android use:
+
+- `list.map(::toUiModel)` to reuse mapper functions.
+- `viewModel::onClick` as a bound reference for callbacks.
+
+Common mistakes:
+
+- Using a bare `return` in a lambda and expecting it to return only from the lambda.
+- Lambda vs Java lambda: Kotlin has real function types; Java lambdas only target functional interfaces, and Kotlin lambdas can modify captured `var`s while Java's cannot.
 
 ## 12. SAM Conversion and `fun interface`
 
 Simple meaning:
 SAM (Single Abstract Method) conversion lets you pass a lambda wherever an interface with exactly one abstract method is expected.
 
-Java interfaces: automatic.
+Analogy:
+A job role with exactly one duty. Anyone who can do that one duty (a lambda) can fill the role without a formal contract.
 
 ```kotlin
-val r = Runnable { println("running") }
-executor.execute { println("task") }
+val r = Runnable { println("running") }          // Java interface: automatic
 button.setOnClickListener { view -> /* ... */ }
-```
 
-Kotlin interfaces: must be declared `fun interface` (since Kotlin 1.4).
-
-```kotlin
-fun interface Validator {
+fun interface Validator {                         // Kotlin interface: must be fun interface
     fun validate(input: String): Boolean
 }
 
@@ -466,42 +602,75 @@ val notEmpty = Validator { it.isNotEmpty() }
 notEmpty.validate("")   // false
 ```
 
+How to read the code:
+`Validator { it.isNotEmpty() }` creates a `Validator` whose single method `validate` runs the lambda.
+
+Internal idea:
+
+- Java interfaces: SAM conversion is automatic.
+- Kotlin interfaces: need the `fun interface` marker (since Kotlin 1.4).
+- Without SAM you would write `object : Validator { override fun validate(input: String) = input.isNotEmpty() }`.
+
+Flow:
+
+```text
+lambda -> wrapped as interface instance -> interface method call runs the lambda
+```
+
 `fun interface` vs function type `(String) -> Boolean`:
 
 - `fun interface`: has a name, can have default methods and extra members, clearer in public APIs, Java-friendly.
 - Function type: lighter, no declaration needed, composes easily.
 
-Without SAM you would write `object : Validator { override fun validate(input: String) = input.isNotEmpty() }`.
+Android use:
 
-Gotcha:
+- `OnClickListener`, `Runnable`, `Comparator`, `Callable`.
+- Public library callbacks that Java code must also call.
+
+Common mistake:
 An `object :` expression creates a new instance each time and has its own `this`; a SAM-converted lambda's `this` refers to the enclosing class.
 
 ## 13. Under the Hood and Performance
 
+Simple meaning:
 SDE 2 rounds probe whether you know what a lambda costs at runtime, not just how to write one.
 
-Compilation:
-A function type `(A, B) -> R` becomes `Function2<A, B, R>` with `invoke(a, b)`. Since Kotlin 2.0, lambdas are compiled with JVM `invokedynamic` (`LambdaMetafactory`) by default instead of generating a class per lambda.
+Analogy:
+Writing a note is free, but delivering a fresh envelope every time (a new object per call) adds up on a busy day.
 
-Allocation:
+Internal idea:
 
+- Compilation: `(A, B) -> R` becomes `Function2<A, B, R>` with `invoke(a, b)`. Since Kotlin 2.0, lambdas compile with `invokedynamic` (`LambdaMetafactory`) by default instead of a class per lambda.
 - Non-capturing lambda: one shared instance, effectively free after the first use.
 - Capturing lambda: a new object each time the lambda expression is evaluated.
 - Captured `var`: wrapped in a `Ref` box (another allocation).
+- Boxing: generic `FunctionN` takes and returns `Object`, so `(Int) -> Int` boxes primitives unless the call is inlined.
 
-Boxing:
-Generic `FunctionN` takes and returns `Object`, so `(Int) -> Int` boxes primitives on each call unless the call is inlined.
+Flow:
 
-`inline` fixes all three for lambdas passed to inline functions: no object, no `invoke`, no boxing.
+```text
+lambda expression -> (capturing? new object : shared instance) -> invoke -> maybe boxing
+inline: none of the above
+```
 
 Collections vs sequences:
-Chained `list.filter { }.map { }` creates an intermediate list per step (eager). `list.asSequence().filter { }.map { }.toList()` processes element by element lazily; prefer it for large data or when you stop early (`first`, `take`). Sequence operations are not inline, so their lambdas are objects.
 
-Other notes:
+```kotlin
+list.filter { }.map { }                      // eager: one intermediate list per step
+list.asSequence().filter { }.map { }.toList() // lazy: element by element
+```
 
-- Hot paths: avoid creating capturing lambdas inside tight loops or `onDraw`; hoist them or use inline functions.
+Prefer sequences for large data or early termination (`first`, `take`). Sequence operations are not inline, so their lambdas are objects.
+
+Android use:
+
+- Avoid capturing lambdas inside tight loops or `onDraw`; hoist them or use inline functions.
 - Compose: unstable lambdas that capture changing values can cause extra recompositions; `remember { }` a lambda when needed.
-- Debugging cost: long lambda chains are harder to step through and give less readable stack traces; balance elegance with debuggability.
+
+Common mistakes:
+
+- Assuming lambdas are free everywhere. A capturing lambda in a hot path allocates repeatedly.
+- Long lambda chains that are hard to step through and give unreadable stack traces. Balance elegance with debuggability.
 
 ## 14. Interview Q&A
 
